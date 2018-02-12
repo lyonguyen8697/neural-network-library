@@ -37,6 +37,7 @@ class NeuralNetwork:
         return output
 
     def train_by_sgd(self, dataset, epochs, mini_batch_size, learning_rate, weight_decay=0, test_data=None):
+        start = time.time()
         batch_size = len(dataset)
 
         for epoch in range(epochs):
@@ -47,10 +48,12 @@ class NeuralNetwork:
                 self.train(mini_batch, learning_rate, weight_decay, batch_size)
 
             if test_data:
-                print("Net3 Epoch {0}: {1} / {2}".format(epoch, self.evaluate(test_data), len(test_data)))
+                print("{0} Epoch {1}: {2} / {3}".format(self.name, epoch, self.evaluate(test_data), len(test_data)))
             else:
-                print("Net3 Epoch {0} complete".format(epoch))
+                print("{0} Epoch {1} complete".format(self.name, epoch))
 
+        end = time.time()
+        print('{0} finished in {1} sec'.format(self.name, end - start))
         self.testing(dataset, test_data)
 
     def train(self, dataset, learning_rate, weight_decay=0, batch_size=None):
@@ -78,18 +81,17 @@ class NeuralNetwork:
         gradient_w = [np.zeros(layer.weights.shape) for layer in self.hidden_layers + [self.output_layer]]
         gradient_b = [np.zeros(layer.biases.shape) for layer in self.hidden_layers + [self.output_layer]]
 
-        activation = input
+        activation = self.input_layer.activate(input)
         activations = [activation]
         zs = []
 
         for layer in self.hidden_layers + [self.output_layer]:
-            z = np.dot(layer.weights, activation) + layer.biases
-            zs.append(z)
+            activation, z = layer.activate(activation)
 
-            activation = layer.activation.evaluate(z)
+            zs.append(z)
             activations.append(activation)
 
-        delta = self.cost.delta(z[-1], activations[-1], output, self.output_layer.activation)
+        delta = self.cost.delta(zs[-1], activations[-1], output, self.output_layer.activation)
         gradient_w[-1] = np.dot(delta, activations[-2].transpose())
         gradient_b[-1] = delta
 
@@ -113,6 +115,6 @@ class NeuralNetwork:
         self.sizes, self.weights, self.biases = np.load(path)
 
     def testing(self, train_data, test_data=None):
-        print('Net3 Training data: {0}%'.format(self.evaluate(train_data) / len(train_data) * 100))
+        print('{0} Training data: {1}%'.format(self.name, self.evaluate(train_data) / len(train_data) * 100))
         if test_data:
-            print('Net3 Test data: {0}%'.format(self.evaluate(test_data) / len(test_data) * 100))
+            print('{0} Test data: {1}%'.format(self.name, self.evaluate(test_data) / len(test_data) * 100))
