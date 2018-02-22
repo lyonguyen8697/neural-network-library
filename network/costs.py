@@ -1,7 +1,14 @@
 import numpy as np
 
 
-class MeanSquaredError:
+class _CostFunction:
+
+    @staticmethod
+    def serialize():
+        return _CostFunction.__class__.__name__
+
+
+class MeanSquaredError(_CostFunction):
 
     @staticmethod
     def evaluate(prediction, output):
@@ -12,7 +19,7 @@ class MeanSquaredError:
         return (a - output) * activation.derivative(z)
 
 
-class CrossEntropy:
+class CrossEntropy(_CostFunction):
 
     @staticmethod
     def evaluate(prediction, output):
@@ -23,7 +30,7 @@ class CrossEntropy:
         return a - output
 
 
-class LogLikelihood:
+class LogLikelihood(_CostFunction):
 
     @staticmethod
     def evaluate(prediction, output):
