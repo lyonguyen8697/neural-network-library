@@ -1,7 +1,22 @@
 import numpy as np
 
 
-class Linear:
+class _Activation:
+
+    def serialize(self):
+        return {
+            'name': self.__class__.__name__
+        }
+
+    @staticmethod
+    def deserialize(o):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        return self
+
+
+class Linear(_Activation):
 
     @staticmethod
     def evaluate(z):
@@ -12,7 +27,7 @@ class Linear:
         return np.ones_like(z)
 
 
-class Sigmoid:
+class Sigmoid(_Activation):
 
     @staticmethod
     def evaluate(z):
@@ -25,7 +40,7 @@ class Sigmoid:
         return sigmoid_z * (1 - sigmoid_z)
 
 
-class Tanh:
+class Tanh(_Activation):
 
     @staticmethod
     def evaluate(z):
@@ -36,7 +51,7 @@ class Tanh:
         return 1 - np.tanh(z) ** 2
 
 
-class ReLU:
+class ReLU(_Activation):
 
     @staticmethod
     def evaluate(z):
@@ -49,7 +64,7 @@ class ReLU:
         return a
 
 
-class LeakyReLU:
+class LeakyReLU(_Activation):
 
     def __init__(self, alpha=0.3):
         self.alpha = alpha
@@ -60,11 +75,12 @@ class LeakyReLU:
     def derivative(self, z):
         return np.where(z >= 0, 1, self.alpha)
 
-    def __call__(self, *args, **kwargs):
-        return self
+    def serialize(self):
+        activation = _Activation.serialize()
+        activation['alpha'] = self.alpha
 
 
-class ELU:
+class ELU(_Activation):
 
     def __init__(self, alpha=1.0):
         self.alpha = alpha
@@ -77,11 +93,12 @@ class ELU:
         e_z = np.exp(z - np.max(z))
         return np.where(z >= 0, 1, self.alpha * e_z)
 
-    def __call__(self, *args, **kwargs):
-        return self
+    def serialize(self):
+        activation = _Activation.serialize()
+        activation['alpha'] = self.alpha
 
 
-class ThresholdedReLU:
+class ThresholdedReLU(_Activation):
 
     def __init__(self, theta=1.0):
         self.theta = theta
@@ -92,11 +109,12 @@ class ThresholdedReLU:
     def derivative(self, z):
         return np.where(z > self.theta, 1, 0)
 
-    def __call__(self, *args, **kwargs):
-        return self
+    def serialize(self):
+        activation = _Activation.serialize()
+        activation['theta'] = self.theta
 
 
-class Softmax:
+class Softmax(_Activation):
 
     @staticmethod
     def evaluate(z):
@@ -109,7 +127,7 @@ class Softmax:
         return softmax_z * (1 - softmax_z)
 
 
-class Softplus:
+class Softplus(_Activation):
 
     @staticmethod
     def evaluate(z):
