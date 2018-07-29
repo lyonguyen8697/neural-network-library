@@ -27,18 +27,17 @@ class NeuralNetwork:
             layer.weights = np.random.randn(layer.numbers, layer.previous.numbers) / np.sqrt(layer.previous.numbers)
             layer.biases = np.random.randn(layer.numbers, 1)
 
-    def feedforward(self, inputs):
-        outputs = np.reshape(inputs, (self.input_layer.numbers, 1))
-
+    def feedforward(self, dataset):
         for layer in self.hidden_layers + [self.output_layer]:
-            outputs = layer.feedforward(outputs)
+            dataset = layer.feedforward(dataset)
 
-        return outputs
+        return dataset
 
-    def train(self, optimizer, training_set, test_set=None):
+    def train(self, optimizer, training_set, validation_set=None):
         def callback(epoch):
-            if test_set is not None:
-                print('{0} Epoch {1}: {2}/{3}'.format(self.name, epoch, self.evaluate(test_set), len(test_set)))
+            if validation_set is not None:
+                print('{0} Epoch {1}: {2}/{3}'
+                      .format(self.name, epoch, self.evaluate(validation_set), validation_set[0].shape[1]))
             else:
                 print('{0} Epoch {1} complete'.format(self.name, epoch))
 
@@ -51,8 +50,11 @@ class NeuralNetwork:
         print('Training {0} finished in {1:.2f} second(s)'.format(self.name, end - start))
 
     def evaluate(self, dataset):
-        results = [(np.argmax(self.feedforward(inputs)), np.argmax(outputs)) for (inputs, outputs) in dataset]
-        return sum(int(predict == output) for (predict, output) in results)
+        data, labels = dataset
+        predicts = np.argmax(self.feedforward(data), axis=0)
+        labels = np.argmax(labels, axis=0)
+
+        return sum(predicts == labels)
 
     def serialize(self):
         return {
@@ -74,7 +76,7 @@ class NeuralNetwork:
     def load(self, path):
         pass
 
-    def testing(self, train_data, test_data=None):
-        print('{0} Training data: {1}%'.format(self.name, self.evaluate(train_data) / len(train_data) * 100))
-        if test_data:
-            print('{0} Test data: {1}%'.format(self.name, self.evaluate(test_data) / len(test_data) * 100))
+    def testing(self, training_set, test_set=None):
+        print('{0} Training data: {1}%'.format(self.name, self.evaluate(training_set) / len(training_set) * 100))
+        if test_set:
+            print('{0} Test data: {1}%'.format(self.name, self.evaluate(test_set) / len(test_set) * 100))

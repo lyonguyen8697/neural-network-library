@@ -3,13 +3,15 @@ import numpy as np
 
 class GradientDescent:
 
-    def __init__(self, learning_rate, weight_decay=0, momentum=0.9):
+    def __init__(self, epochs, learning_rate, weight_decay=0.0, momentum=0.9, nesterov=False):
+        self.epochs = epochs
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.momentum = momentum
+        self.nesterov = nesterov
 
     def optimize(self, network, training_set, callback=None):
-        batch_size = len(training_set)
+        batch_size = training_set[0].shape[1]
 
         for epoch in range(self.epochs):
             self.gradient_descent(network, training_set, batch_size)
@@ -19,37 +21,46 @@ class GradientDescent:
 
     def gradient_descent(self, network, training_set, batch_size=None):
         if batch_size is None:
-            batch_size = len(training_set)
+            batch_size = training_set[0].shape[1]
 
         gradient_w = [np.zeros(layer.weights.shape) for layer in network.hidden_layers + [network.output_layer]]
         gradient_b = [np.zeros(layer.biases.shape) for layer in network.hidden_layers + [network.output_layer]]
 
-        for inputs, outputs in training_set:
-            delta_gradient_w, delta_gradient_b = self.backpropagation(network, inputs, outputs)
-            gradient_w = [gradient + delta for gradient, delta in zip(gradient_w, delta_gradient_w)]
-            gradient_b = [gradient + delta for gradient, delta in zip(gradient_b, delta_gradient_b)]
+        data, labels = training_set
+
+        delta_gradient_w, delta_gradient_b = self.backpropagation(network, data, labels)
+        gradient_w = [gradient + delta for gradient, delta in zip(gradient_w, delta_gradient_w)]
+        gradient_b = [gradient + delta for gradient, delta in zip(gradient_b, delta_gradient_b)]
 
         weight_decay = (1 - self.learning_rate * self.weight_decay / batch_size)
 
-        update_w = np.zeros_like(gradient_w)
-        update_b = np.zeros_like(gradient_b)
+        velocity_w = np.zeros_like(gradient_w)
+        velocity_b = np.zeros_like(gradient_b)
 
         for index, layer in enumerate(network.hidden_layers + [network.output_layer]):
-            update_w[index] = self.momentum * update_w[index] + self.learning_rate / len(training_set) * gradient_w[index]
-            update_b[index] = self.momentum * update_b[index] + self.learning_rate / len(training_set) * gradient_b[index]
 
-            layer.weights = weight_decay * layer.weights - update_w[index]
-            layer.biases = layer.biases - update_b[index]
+            grad_update_w = self.learning_rate / batch_size * gradient_w[index]
+            grad_update_b = self.learning_rate / batch_size * gradient_b[index]
+
+            velocity_w[index] = self.momentum * velocity_w[index] - grad_update_w
+            velocity_b[index] = self.momentum * velocity_b[index] - grad_update_b
+
+            if self.nesterov:
+                update_w = self.momentum * velocity_w[index] - grad_update_w
+                update_b = self.momentum * velocity_b[index] - grad_update_b
+            else:
+                update_w = velocity_w[index]
+                update_b = velocity_b[index]
+
+            layer.weights = weight_decay * layer.weights + update_w
+            layer.biases = layer.biases + update_b
 
     @staticmethod
-    def backpropagation(network, inputs, outputs):
-        inputs = np.reshape(inputs, (network.input_layer.numbers, 1))
-        outputs = np.reshape(outputs, (network.output_layer.numbers, 1))
-
+    def backpropagation(network, data, labels):
         gradient_w = [np.zeros(layer.weights.shape) for layer in network.hidden_layers + [network.output_layer]]
         gradient_b = [np.zeros(layer.biases.shape) for layer in network.hidden_layers + [network.output_layer]]
 
-        activation = network.input_layer.activate(inputs)
+        activation = network.input_layer.activate(data)
         activations = [activation]
         zs = []
 
@@ -59,32 +70,35 @@ class GradientDescent:
             zs.append(z)
             activations.append(activation)
 
-        delta = network.cost.delta(zs[-1], activations[-1], outputs, network.output_layer.activation)
+        delta = network.cost.delta(zs[-1], activations[-1], labels, network.output_layer.activation)
         gradient_w[-1] = np.dot(delta, activations[-2].transpose())
-        gradient_b[-1] = delta
+        gradient_b[-1] = np.sum(delta, axis=1, keepdims=True)
 
         for index, layer in enumerate(reversed(network.hidden_layers), 2):
             z = zs[-index]
             delta = np.dot(layer.next.weights.transpose(), delta) * layer.activation.derivative(z)
 
             gradient_w[-index] = np.dot(delta, activations[-index - 1].transpose())
-            gradient_b[-index] = delta
+            gradient_b[-index] = np.sum(delta, axis=1, keepdims=True)
 
         return gradient_w, gradient_b
 
 
 class StochasticGradientDescent(GradientDescent):
 
-    def __init__(self, epochs, mini_batch_size, learning_rate, weight_decay=0, momentum=0.9):
-        GradientDescent.__init__(self, learning_rate, weight_decay, momentum)
-        self.epochs = epochs
+    def __init__(self, epochs, mini_batch_size, learning_rate, weight_decay=0, momentum=0.9, nesterov=False):
+        GradientDescent.__init__(self, epochs, learning_rate, weight_decay, momentum, nesterov)
         self.mini_batch_size = mini_batch_size
 
     def optimize(self, network, training_set, callback=None):
-        batch_size = len(training_set)
+        batch_size = training_set[0].shape[1]
 
         for epoch in range(self.epochs):
-            np.random.shuffle(training_set)
+            state = np.random.get_state()
+            np.random.shuffle(training_set[0].T)
+            np.random.set_state(state)
+            np.random.shuffle(training_set[1].T)
+
             mini_batches = self.separate_batch(training_set, self.mini_batch_size)
 
             for mini_batch in mini_batches:
@@ -95,4 +109,4 @@ class StochasticGradientDescent(GradientDescent):
 
     @staticmethod
     def separate_batch(dataset, mini_batch_size):
-        return [dataset[k:k + mini_batch_size] for k in range(0, len(dataset), mini_batch_size)]
+        return [(dataset[0][:, k:k + mini_batch_size], dataset[1][:, k:k + mini_batch_size]) for k in range(0, dataset[0].shape[1], mini_batch_size)]
