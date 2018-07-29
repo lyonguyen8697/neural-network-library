@@ -36,35 +36,41 @@ test_labels = reshape_labels(test_set[1])
 #     plt.show()
 #
 
-net3 = networks.NeuralNetwork(layers.InputLayer(784),
+net1 = networks.NeuralNetwork(layers.InputLayer(784),
                               [
-                                  layers.HiddenLayer(100, activations.ReLU),
                                   layers.HiddenLayer(100, activations.ReLU)
                               ],
                               layers.OutputLayer(10, activations.Sigmoid),
                               cost=costs.CrossEntropy)
-net4 = networks.NeuralNetwork(layers.InputLayer(784),
+net2 = networks.NeuralNetwork(layers.InputLayer(784),
                               [layers.HiddenLayer(100, activations.ReLU)],
                               layers.OutputLayer(10, activations.Sigmoid),
                               cost=costs.CrossEntropy)
 
-net3.name = 'Net3'
-net4.name = 'Net4'
+net1.name = 'Net1'
+net2.name = 'Net2'
 
-# optimizer3 = optimizers.StochasticGradientDescent(30, 64, 1., 5.0)
-optimizer3 = optimizers.StochasticGradientDescent(30, 64, 1., 5., nesterov=True)
+optimizer1 = optimizers.GradientDescentOptimizer(1., 30, 64, 5.0)
+optimizer2 = optimizers.MomentumOptimizer(2., 30, 64, 5.0, gamma=0.9)
+optimizer3 = optimizers.NAGOptimizer(2., 30, 64, 5.0, gamma=0.9)
+optimizer4 = optimizers.AdagradOptimizer(2., 30, 64, 5.0)
+optimizer5 = optimizers.AdadeltaOptimizer(2., 30, 64, 5.0, gamma=0.9)
+optimizer6 = optimizers.RMSpropOptimizer(2., 30, 64, 5.0, beta=0.999)
+optimizer7 = optimizers.AdamOptimizer(2., 30, 64, 5.0, beta_1=0.9, beta_2=0.999)
+optimizer8 = optimizers.AdamMaxOptimizer(2., 30, 64, 5.0, beta_1=0.9, beta_2=0.999)
+optimizer9 = optimizers.NadamOptimizer(2., 30, 64, 5.0, beta_1=0.9, beta_2=0.999)
+optimizer10 = optimizers.AMSGradOptimizer(2., 30, 64, 5.0, beta_1=0.9, beta_2=0.999)
 
 
-Timer(0, net3.train, (optimizer3, (training_data, training_labels), (test_data, test_labels))).start()
-# Timer(0, net4.train, (optimizer4, training_set, test_set)).start()
+net1.train(optimizer6, (training_data, training_labels), (test_data, test_labels))
+
+print('Training_data: {0}%'.format(net1.evaluate((training_data, training_labels)) / training_data.shape[1] * 100))
+print('Test_data: {0}%'.format(net1.evaluate((test_data, test_labels)) / test_data.shape[1] * 100))
+
+# Timer(0, net1.train, (optimizer1, (training_data, training_labels), (test_data, test_labels))).start()
 
 
-# net4.train(optimizer4, training_set[:1000], test_set)
 
-
-# net4.save('test.json')
-# print('training_data: {0}%'.format(net2.evaluate(training_set) / len(training_set) * 100))
-# print('test_data: {0}%'.format(net2.evaluate(test_set) / len(test_set) * 100))
 
 
 
